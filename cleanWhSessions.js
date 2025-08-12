@@ -7,6 +7,35 @@ const SESSIONS_PATH = '/var/www/node-apps/boostpub-api/WH_SESSIONS/PROD';
 const CHROME_PROCESS_NAME = 'chrome'; // ou 'chromium' selon ton install
 const HTTP_REPORT_ENDPOINT = ''; // <-- mets ton endpoint ici ou laisse vide
 
+// Fonction de logging avec timestamp
+function log(message, type = 'INFO') {
+    const timestamp = new Date().toISOString();
+    const prefix = `[${timestamp}] [CLEANUP]`;
+
+    switch (type) {
+        case 'ERROR':
+            console.error(`${prefix} ❌ ${message}`);
+            break;
+        case 'WARNING':
+            console.warn(`${prefix} ⚠️  ${message}`);
+            break;
+        case 'SUCCESS':
+            console.log(`${prefix} ✅ ${message}`);
+            break;
+        case 'ACTION':
+            console.log(`${prefix} 🔥 ${message}`);
+            break;
+        case 'CLEANUP':
+            console.log(`${prefix} 🧹 ${message}`);
+            break;
+        case 'STATUS':
+            console.log(`${prefix} 📊 ${message}`);
+            break;
+        default:
+            console.log(`${prefix} ℹ️  ${message}`);
+    }
+}
+
 // Helper exec promisifié
 function execAsync(cmd) {
     return new Promise((res, rej) => {
@@ -73,33 +102,49 @@ async function deleteFolder(folderPath) {
 
 // Fonction principale
 async function main() {
-    console.log('Recherche des fichiers SingletonLock...');
+    log(`🚀 Démarrage du nettoyage des sessions Chrome`, 'SUCCESS');
+    log(`Répertoire cible: ${SESSIONS_PATH}`, 'STATUS');
+
+    log(`Recherche des fichiers SingletonLock...`, 'CLEANUP');
     const lockFiles = await findSingletonLocks();
     if (lockFiles.length === 0) {
-        console.log('Aucun fichier SingletonLock trouvé.');
+        log(`Aucun fichier SingletonLock trouvé - rien à nettoyer`, 'SUCCESS');
         return;
     }
 
     const lockedFolders = foldersFromLocks(lockFiles);
-    console.log(`Dossiers bloqués trouvés : ${lockedFolders.length}`);
+    log(`Dossiers bloqués trouvés: ${lockedFolders.length}`, 'CLEANUP');
 
     const activeProfiles = await getActiveChromeProfiles();
-    console.log(`Profils Chrome actifs détectés : ${activeProfiles.length}`);
+    log(`Profils Chrome actifs détectés: ${activeProfiles.length}`, 'CLEANUP');
 
     // Identifier dossiers orphelins (pas dans les profils actifs)
     const orphelins = lockedFolders.filter(folder => {
         return !activeProfiles.some(active => active === folder);
     });
 
-    console.log(`Dossiers orphelins à supprimer : ${orphelins.length}`);
+    log(`Dossiers orphelins identifiés: ${orphelins.length}`, 'CLEANUP');
+
+    if (orphelins.length === 0) {
+        log(`Aucun dossier orphelin à supprimer - tout est propre`, 'SUCCESS');
+        return;
+    }
 
     // Suppression
+    log(`Début de la suppression de ${orphelins.length} dossiers orphelins...`, 'ACTION');
     const results = [];
     for (const folder of orphelins) {
         const success = await deleteFolder(folder);
         results.push({ folder, deleted: success });
-        console.log(`${success ? 'Supprimé:' : 'Échec suppression:'} ${folder}`);
+        if (success) {
+            log(`✓ Supprimé: ${path.basename(folder)}`, 'CLEANUP');
+        } else {
+            log(`✗ Échec suppression: ${path.basename(folder)}`, 'ERROR');
+        }
     }
+
+    const deletedCount = results.filter(r => r.deleted).length;
+    log(`Nettoyage terminé: ${deletedCount}/${orphelins.length} dossiers supprimés avec succès`, 'SUCCESS');
 
     // Rapport résumé
     const report = {
@@ -108,25 +153,34 @@ async function main() {
         totalLockedFolders: lockedFolders.length,
         activeProfilesCount: activeProfiles.length,
         orphanFoldersCount: orphelins.length,
-        deletedFoldersCount: results.filter(r => r.deleted).length,
+        deletedFoldersCount: deletedCount,
         deletedFolders: results.filter(r => r.deleted).map(r => r.folder),
     };
 
-    console.log('\n=== Rapport résumé ===');
-    console.log(JSON.stringify(report, null, 2));
+    log(`📊 RAPPORT FINAL:`, 'STATUS');
+    log(`  • Fichiers SingletonLock: ${report.totalLocks}`, 'STATUS');
+    log(`  • Dossiers bloqués: ${report.totalLockedFolders}`, 'STATUS');
+    log(`  • Profils Chrome actifs: ${report.activeProfilesCount}`, 'STATUS');
+    log(`  • Dossiers orphelins: ${report.orphanFoldersCount}`, 'STATUS');
+    log(`  • Dossiers supprimés: ${report.deletedFoldersCount}`, 'STATUS');
 
     // Envoi HTTP (optionnel)
     if (HTTP_REPORT_ENDPOINT) {
         try {
+            log(`Envoi du rapport à ${HTTP_REPORT_ENDPOINT}...`, 'ACTION');
             await axios.post(HTTP_REPORT_ENDPOINT, report);
-            console.log(`Rapport envoyé à ${HTTP_REPORT_ENDPOINT}`);
+            log(`Rapport envoyé avec succès`, 'SUCCESS');
         } catch (e) {
-            console.error(`Erreur envoi rapport HTTP : ${e.message}`);
+            log(`Erreur lors de l'envoi du rapport HTTP: ${e.message}`, 'ERROR');
         }
+    } else {
+        log(`Aucun endpoint HTTP configuré - rapport non envoyé`, 'INFO');
     }
+
+    log(`🎉 NETTOYAGE TERMINÉ AVEC SUCCÈS !`, 'SUCCESS');
 }
 
 main().catch(e => {
-    console.error('Erreur dans le script:', e);
+    log(`❌ ERREUR CRITIQUE dans le script: ${e.message}`, 'ERROR');
     process.exit(1);
 });
