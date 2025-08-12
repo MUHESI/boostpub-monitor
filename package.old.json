@@ -1,0 +1,39 @@
+{
+  "name": "boostpub-monitor",
+  "version": "1.0.0",
+  "description": "Monitoring et contrôle automatisé pour BoostPub avec surveillance CPU/RAM et nettoyage de sessions",
+  "main": "dist/controller.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/controller.js",
+    "dev": "node src/controller.ts",
+    "clean": "node dist/cleaner-cli.js",
+    "monitor": "node dist/monitor-cli.js",
+    "watchdog": "node dist/watchdog-cli.js",
+    "clean:dev": "ts-node src/cleaner-cli.ts",
+    "monitor:dev": "ts-node src/monitor-cli.ts",
+    "watchdog:dev": "ts-node src/watchdog-cli.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "monitoring",
+    "boostpub",
+    "puppeteer",
+    "pm2",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.11.0",
+    "child_process": "^1.0.2",
+    "dotenv": "^17.2.1",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.3.0"
+  }
+}
