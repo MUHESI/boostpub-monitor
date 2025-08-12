@@ -135,6 +135,8 @@ async function handleThreshold(cpu, rssMb) {
     } catch (err) {
         log(`❌ ERREUR CRITIQUE lors de la séquence de récupération: ${err.message}`, 'ERROR');
         log(`L'application peut nécessiter une intervention manuelle`, 'WARNING');
+        console.log('=========================================');
+        console.log(err);
     }
 }
 

@@ -17,11 +17,11 @@ echo '--------------4. DELETE  dist, node_modules and package.json IN /var/www/n
 
 echo '---------------------pm2 restart boostpub-monitor-------------------------'
 
-pm2 start main.js --name boostpub-monitor
+# pm2 start main.js --name boostpub-monitor
 
-pm2 save    
+# pm2 save    
 
-# pm2 restart boostpub-monitor
+pm2 restart boostpub-monitor
 pm2 logs boostpub-monitor --lines 300
 
 
